@@ -13,8 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "llms.txt Generator",
-  description: "Generate llms.txt files from webpages for AI agents"
+  title: "Free llms.txt Generator",
+  description: "Generate llms.txt files from webpages for AI agents free of cost",
+  openGraph: {
+    title: "Free llms.txt Generator",
+    description: "Generate llms.txt files from webpages for AI agents free of cost",
+    url: "https://freellmstxt.moinulmoin.com",
+    siteName: "freellmstxt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free llms.txt Generator",
+    description: "Generate llms.txt files from webpages for AI agents free of cost",
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

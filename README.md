@@ -16,6 +16,7 @@ A web application that converts webpage content into AI-friendly Markdown format
 - TypeScript
 - Tailwind CSS
 - Shadcn UI
+- Vercel AI SDK
 - Google Gemini 1.5 Flash
 
 ## Usage

@@ -88,7 +88,7 @@ export default function LlmsTxtGenerator() {
               required
               className="flex-grow"
             />
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} data-umami-event="Generate">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -125,6 +125,7 @@ export default function LlmsTxtGenerator() {
               a.click();
             }}
             className="w-full"
+            data-umami-event="Download"
           >
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>

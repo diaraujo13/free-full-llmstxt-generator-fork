@@ -1,3 +1,4 @@
+import { Footer } from "@/components/footer";
 import LlmsTxtGenerator from "@/components/llmstxt-generator";
 
 export default function Home() {
@@ -6,6 +7,7 @@ export default function Home() {
     <div className="w-full max-w-4xl space-y-8">
       <LlmsTxtGenerator />
     </div>
+    <Footer />
   </main>
   );
 }

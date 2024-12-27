@@ -1,7 +1,6 @@
 "use client";
 
 import { generateLlmTxt } from "@/actions/generate-llmstxt";
-import { GenerationProgress } from "@/components/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,11 +39,7 @@ export default function LlmsTxtGenerator() {
       const sanitizedUrl = validateAndSanitizeUrl(url);
       setStatus("fetching");
       // Fetch webpage
-      const webpageResponse = await fetch(sanitizedUrl, {
-        headers: {
-          "User-Agent": "llmstxt-generator/1.0"
-        }
-      });
+      const webpageResponse = await fetch(sanitizedUrl);
       if (!webpageResponse.ok) {
         throw new LLMTXTError("Failed to fetch webpage", "FETCH_ERROR", webpageResponse.status);
       }
@@ -54,7 +49,6 @@ export default function LlmsTxtGenerator() {
       const html = await webpageResponse.text();
       const $ = cheerio.load(html);
       const { title, content } = extractContent($);
-      console.log(title, content);
       setStatus("formatting");
       const response = await generateLlmTxt({ title, content, url });
       if (response.success) {
@@ -98,7 +92,7 @@ export default function LlmsTxtGenerator() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
                 </>
               ) : (
                 "Generate"
@@ -106,7 +100,6 @@ export default function LlmsTxtGenerator() {
             </Button>
           </div>
         </form>
-        {isLoading && <GenerationProgress status={status} />}
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertCircle className="h-4 w-4" />
@@ -133,7 +126,7 @@ export default function LlmsTxtGenerator() {
             }}
             className="w-full"
           >
-            <Download className="mr-2 h-4 w-4" /> Download llms.txt
+            <Download className="mr-2 h-4 w-4" /> Download
           </Button>
         </CardFooter>
       )}

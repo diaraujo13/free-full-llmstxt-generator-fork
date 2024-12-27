@@ -49,8 +49,6 @@ export async function generateLlmTxt({title, content, url}: {title: string, cont
       prompt: prompt(content),
     });
 
-    console.log({text, finishReason});
-
 
     if (finishReason === 'error') {
       throw new LLMTXTError(

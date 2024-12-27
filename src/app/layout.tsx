@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>
+
+        {process.env.NODE_ENV === "production" && (
+          <Script src="https://umami.moinulmoin.com/script.js" data-website-id="0b2d6e5f-21c7-4cb3-a613-ffa3ba7fe27e"></Script>
+        )}
       </body>
     </html>
   );

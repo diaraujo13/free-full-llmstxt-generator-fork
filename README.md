@@ -2,14 +2,6 @@
 
 A web application that converts webpage content into AI-friendly Markdown format, optimized for LLM training and context.
 
-## Features
-
-- 🔄 URL to Markdown conversion
-- 🧠 AI-powered content formatting using Gemini
-- 🔒 Built-in security features
-- 🌓 Dark/Light mode support
-- 📱 Responsive design
-
 ## Tech Stack
 
 - Next.js 15

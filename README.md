@@ -1,6 +1,6 @@
-# llms.txt Generator
+# Free llms.txt Generator
 
-A web application that converts webpage content into AI-friendly Markdown format, optimized for LLM training and context.
+An tool that converts webpage content into Markdown format, optimized for LLM training and context.
 
 ## Tech Stack
 

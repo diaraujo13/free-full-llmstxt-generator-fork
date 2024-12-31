@@ -14,9 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { LLMTXTError } from "@/lib/errors";
 import { validateAndSanitizeUrl } from "@/lib/security";
-import { extractContent } from "@/lib/utils";
-import { GenerationStatus } from "@/types";
-import * as cheerio from "cheerio";
 import { AlertCircle, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { ModeToggle } from "./mode-toggle";
@@ -26,7 +23,6 @@ export default function LlmsTxtGenerator() {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState<GenerationStatus>("idle");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,29 +33,15 @@ export default function LlmsTxtGenerator() {
     try {
       // Validate and sanitize URL
       const sanitizedUrl = validateAndSanitizeUrl(url);
-      setStatus("fetching");
-      // Fetch webpage
-      const webpageResponse = await fetch(sanitizedUrl);
-      if (!webpageResponse.ok) {
-        throw new LLMTXTError("Failed to fetch webpage", "FETCH_ERROR", webpageResponse.status);
-      }
 
-      // Parse HTML and extract content
-      setStatus("parsing");
-      const html = await webpageResponse.text();
-      const $ = cheerio.load(html);
-      const { title, content } = extractContent($);
-      setStatus("formatting");
-      const response = await generateLlmTxt({ title, content, url });
+      const response = await generateLlmTxt({ url: sanitizedUrl });
       if (response.success) {
         setResult(response.data!);
-        setStatus("complete");
       } else {
         console.log(response.error);
         throw new LLMTXTError("Failed to generate llms.txt", "AI_ERROR", 500);
       }
     } catch (error) {
-      setStatus("error");
       setError(error instanceof Error ? error.message : "An unexpected error occurred");
     } finally {
       setIsLoading(false);
@@ -74,7 +56,7 @@ export default function LlmsTxtGenerator() {
           <ModeToggle />
         </div>
         <CardDescription>
-          Enter a webpage URL to generate a markdown friendly llms.txt file
+          Enter a webpage URL to generate an llms.txt file that can be used for context or training purposes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -92,7 +74,7 @@ export default function LlmsTxtGenerator() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  Generating
                 </>
               ) : (
                 "Generate"

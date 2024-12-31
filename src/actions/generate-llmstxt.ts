@@ -1,11 +1,12 @@
 "use server";
 
-import { handleError, LLMTXTError } from '@/lib/errors';
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
-
+import { handleError, LLMTXTError } from "@/lib/errors";
+import { extractContent } from "@/lib/utils";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+import * as cheerio from "cheerio";
 const prompt = (content: string) =>
-`You are an expert webpage content formatter for creating high-quality Markdown suitable for training or providing context to large language models (LLMs). Your task is to convert input webpage content into clean, well-structured Markdown, paying meticulous attention to preserving semantic meaning and important formatting cues using Markdown syntax. Specifically:
+  `You are an expert webpage content formatter for creating high-quality Markdown suitable for training or providing context to large language models (LLMs). Your task is to convert input webpage content into clean, well-structured Markdown, paying meticulous attention to preserving semantic meaning and important formatting cues using Markdown syntax. Specifically:
 
 * Maintain code blocks exactly as they appear in the source, using Markdown fenced code blocks (\`\`\`). Clearly identify the language if specified after the opening \`\`\`.
 
@@ -24,45 +25,48 @@ const prompt = (content: string) =>
 Here is the webpage content: ${content}
 `;
 
-const formatContent = ({title, content, url}: {title: string, content: string, url: string}) => {
-  return `
-  ---
-  title: ${title}
-  source_url: ${url}
-  timestamp: ${new Date().toISOString()}
-  ---
-  ${content}
-  `;
+const formatContent = ({
+  title,
+  content,
+  url
+}: {
+  title: string;
+  content: string;
+  url: string;
+}) => {
+  return `---\ntitle: ${title}\nurl: ${url}\ntimestamp: ${new Date().toISOString()}\n---\n${content}`;
 };
 
-export async function generateLlmTxt({title, content, url}: {title: string, content: string, url: string}) {
+export async function generateLlmTxt({ url }: { url: string }) {
   try {
-    if (!content) {
-      throw new LLMTXTError(
-        'No content found on webpage',
-        'PARSE_ERROR'
-      );
+    const webpageResponse = await fetch(url);
+    if (!webpageResponse.ok) {
+      throw new LLMTXTError("Failed to fetch webpage", "FETCH_ERROR", webpageResponse.status);
     }
 
-    const { text, finishReason, } = await generateText({
-      model: google('gemini-1.5-flash-8b'),
-      prompt: prompt(content),
+    // Parse HTML and extract content
+    const html = await webpageResponse.text();
+    const $ = cheerio.load(html);
+    const { title, content } = extractContent($);
+
+    if (!content) {
+      throw new LLMTXTError("No content found on webpage", "PARSE_ERROR");
+    }
+
+    const { text, finishReason } = await generateText({
+      model: google("gemini-1.5-flash-8b"),
+      prompt: prompt(content)
     });
 
-
-    if (finishReason === 'error') {
-      throw new LLMTXTError(
-        'An error occurred while formatting the webpage content',
-        'AI_ERROR'
-      );
+    if (finishReason === "error") {
+      throw new LLMTXTError("An error occurred while formatting the webpage content", "AI_ERROR");
     }
 
     // Return stream with error handling
     return {
       success: true,
-      data: formatContent({title, content: text, url})
+      data: formatContent({ title, content: text, url })
     };
-
   } catch (error) {
     const handledError = handleError(error);
     return { success: false, error: handledError.message };

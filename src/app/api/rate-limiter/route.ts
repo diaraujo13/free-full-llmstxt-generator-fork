@@ -1,6 +1,8 @@
 import { ratelimit } from "@/lib/rate-limit";
 import { ipAddress, waitUntil } from '@vercel/functions';
 
+export const runtime = 'nodejs';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {

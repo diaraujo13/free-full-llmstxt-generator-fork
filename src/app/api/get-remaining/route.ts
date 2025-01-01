@@ -1,15 +1,12 @@
 import { ratelimit } from "@/lib/rate-limit";
+import { ipAddress } from "@vercel/functions";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const identifier =
-      request.headers.get("cf-connecting-ip") ??
-      request.headers.get("x-real-ip") ??
-      request.headers.get("x-forwarded-for")?.split(',')[0] ??
-      "127.0.0.1";
+    const identifier = ipAddress(request) ?? request.headers.get("x-forwarded-for") ?? "127.0.0.1";
 
     const { remaining } = await ratelimit.getRemaining(identifier);
 

@@ -1,7 +1,7 @@
-export const dynamic = 'force-dynamic';
-
 import { ratelimit } from "@/lib/rate-limit";
 import { ipAddress, waitUntil } from '@vercel/functions';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const identifier = ipAddress(request) ?? request.headers.get("x-forwarded-for") ?? request.headers.get("cf-connecting-ip") ?? "127.0.0.1";

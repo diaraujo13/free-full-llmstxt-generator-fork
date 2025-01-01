@@ -1,8 +1,8 @@
-export const dynamic = "force-dynamic";
-
 import { ratelimit } from "@/lib/rate-limit";
 import { ipAddress } from "@vercel/functions";
 import { NextRequest } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {

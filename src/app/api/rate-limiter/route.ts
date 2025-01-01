@@ -1,10 +1,15 @@
 import { ratelimit } from "@/lib/rate-limit";
-import { ipAddress, waitUntil } from '@vercel/functions';
+import { waitUntil } from "@vercel/functions";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const identifier = ipAddress(request) ?? request.headers.get("x-forwarded-for") ?? request.headers.get("cf-connecting-ip") ?? "127.0.0.1";
+  const identifier =
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0] ??
+    "127.0.0.1";
+
   const { success, pending } = await ratelimit.limit(identifier);
 
   waitUntil(pending);

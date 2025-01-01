@@ -1,7 +1,7 @@
 "use server";
 
 import { ErrorCode, handleError, LLMTXTError } from "@/lib/errors";
-import { extractContent } from "@/lib/utils";
+import { extractContent, siteUrl } from "@/lib/utils";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import * as cheerio from "cheerio";
@@ -57,7 +57,7 @@ export type GenerateResponse = {
 
 export async function generateLlmTxt({ url }: { url: string }): Promise<GenerateResponse> {
   try {
-    const shouldGenerate = await fetch("http://localhost:3000/api/rate-limiter");
+    const shouldGenerate = await fetch(`${siteUrl}/api/rate-limiter`);
     if (!shouldGenerate.ok) {
       throw new LLMTXTError(
         "Your daily limit has been reached. Please try again tomorrow.",

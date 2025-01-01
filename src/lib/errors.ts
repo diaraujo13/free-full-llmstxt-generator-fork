@@ -4,7 +4,8 @@ export type ErrorCode =
   | 'PARSE_ERROR'
   | 'AI_ERROR'
   | 'VALIDATION_ERROR'
-  | 'NETWORK_ERROR';
+  | 'NETWORK_ERROR'
+  | 'RATE_LIMIT_EXCEEDED';
 
 export class LLMTXTError extends Error {
   constructor(

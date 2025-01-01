@@ -49,3 +49,5 @@ export function extractContent($: CheerioAPI) {
     content: mainContent.trim().replace(/\s+/g, ' ')
   };
 }
+
+export const siteUrl = process.env.VERCEL_URL || "http://localhost:3000";

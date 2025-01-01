@@ -12,11 +12,13 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useRateLimit } from "@/hooks/use-ratelimit";
 import { ErrorCode } from "@/lib/errors";
 import { validateAndSanitizeUrl } from "@/lib/security";
 import { AlertCircle, Check, Copy, Download, Loader2, WandSparkles } from "lucide-react";
 import { startTransition, useOptimistic, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
+import { useRouter } from "next/navigation";
 
 interface ErrorState {
   message: string;
@@ -24,11 +26,13 @@ interface ErrorState {
 }
 
 export default function LlmsTxtGenerator() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState<ErrorState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useOptimistic(false);
+  const { data, isLoading: rateLimitLoading, } = useRateLimit();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +47,7 @@ export default function LlmsTxtGenerator() {
       const response = await generateLlmTxt({ url: sanitizedUrl });
       if (response.success) {
         setResult(response.data);
+        router.refresh();
       } else {
         setError({ message: response.error, code: response.code });
       }
@@ -64,9 +69,17 @@ export default function LlmsTxtGenerator() {
         <div className="flex justify-between items-center">
           <CardTitle>
             Generate llms.txt{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              (5 requests remaining today)
-            </span>
+            {data === null || rateLimitLoading ? (
+              <span className="text-sm font-normal text-muted-foreground">Checking limit ...</span>
+            ) : data.remaining === 0 ? (
+              <span className="text-sm font-normal text-muted-foreground">
+                (No requests remaining today)
+              </span>
+            ) : (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({data.remaining} requests remaining today)
+              </span>
+            )}
           </CardTitle>
           <ModeToggle />
         </div>

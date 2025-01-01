@@ -5,6 +5,7 @@ import { extractContent } from "@/lib/utils";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import * as cheerio from "cheerio";
+import { revalidateTag } from "next/cache";
 
 const prompt = (
   content: string
@@ -56,7 +57,15 @@ export type GenerateResponse = {
 
 export async function generateLlmTxt({ url }: { url: string }): Promise<GenerateResponse> {
   try {
+    const shouldGenerate = await fetch("http://localhost:3000/api/rate-limiter");
+    if (!shouldGenerate.ok) {
+      throw new LLMTXTError(
+        "Your daily limit has been reached. Please try again tomorrow.",
+        "RATE_LIMIT_EXCEEDED"
+      );
+    }
     const webpageResponse = await fetch(url);
+
     if (!webpageResponse.ok) {
       throw new LLMTXTError(
         `Failed to fetch webpage: ${webpageResponse.statusText}`,
@@ -88,6 +97,8 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
         "AI_ERROR"
       );
     }
+
+    revalidateTag("get-remaining");
 
     return {
       success: true,

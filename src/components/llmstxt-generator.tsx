@@ -12,22 +12,28 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { LLMTXTError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 import { validateAndSanitizeUrl } from "@/lib/security";
-import { AlertCircle, Download, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, Check, Copy, Download, Loader2, WandSparkles } from "lucide-react";
+import { startTransition, useOptimistic, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
+
+interface ErrorState {
+  message: string;
+  code: ErrorCode;
+}
 
 export default function LlmsTxtGenerator() {
   const [url, setUrl] = useState("");
   const [result, setResult] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useOptimistic(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError(null);
     setResult("");
 
     try {
@@ -36,13 +42,17 @@ export default function LlmsTxtGenerator() {
 
       const response = await generateLlmTxt({ url: sanitizedUrl });
       if (response.success) {
-        setResult(response.data!);
+        setResult(response.data);
       } else {
-        console.log(response.error);
-        throw new LLMTXTError("Failed to generate llms.txt", "AI_ERROR", 500);
+        setError({ message: response.error, code: response.code });
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An unexpected error occurred");
+    } catch (err) {
+      // This catch block handles URL validation errors
+      const error = err instanceof Error ? err : new Error("An unexpected error occurred");
+      setError({
+        message: error.message,
+        code: "VALIDATION_ERROR"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -52,11 +62,17 @@ export default function LlmsTxtGenerator() {
     <Card className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Generate llms.txt</CardTitle>
+          <CardTitle>
+            Generate llms.txt{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              (5 requests remaining today)
+            </span>
+          </CardTitle>
           <ModeToggle />
         </div>
         <CardDescription>
-          Enter a webpage URL to generate an llms.txt file that can be used for context or training purposes.
+          Enter a webpage URL to generate an llms.txt file that can be used for context or training
+          purposes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -65,7 +81,7 @@ export default function LlmsTxtGenerator() {
             <Input
               type="url"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => setUrl(e.target.value.trim())}
               placeholder="https://example.com"
               required
               className="flex-grow"
@@ -73,11 +89,14 @@ export default function LlmsTxtGenerator() {
             <Button type="submit" disabled={isLoading} data-umami-event="Generate">
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Generating
                 </>
               ) : (
-                "Generate"
+                <>
+                  <WandSparkles className="h-4 w-4" />
+                  Generate
+                </>
               )}
             </Button>
           </div>
@@ -85,18 +104,32 @@ export default function LlmsTxtGenerator() {
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertTitle>Error: {error.code}</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
         {result && (
-          <div className="mt-4">
+          <div className="mt-4 font-mono">
             <pre className="bg-muted p-4 rounded-md overflow-auto max-h-96 text-sm">{result}</pre>
           </div>
         )}
       </CardContent>
       {result && (
-        <CardFooter>
+        <CardFooter className="flex gap-2">
+          <Button
+            onClick={() => {
+              startTransition(async () => {
+                await navigator.clipboard.writeText(result);
+                setIsCopied(true);
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+              });
+            }}
+            className="flex-1"
+            data-umami-event="Copy"
+          >
+            {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}{" "}
+            {isCopied ? "Copied" : "Copy"}
+          </Button>
           <Button
             onClick={() => {
               const blob = new Blob([result], { type: "text/markdown" });
@@ -106,7 +139,7 @@ export default function LlmsTxtGenerator() {
               a.download = "llms.txt";
               a.click();
             }}
-            className="w-full"
+            className="flex-1"
             data-umami-event="Download"
           >
             <Download className="mr-2 h-4 w-4" /> Download

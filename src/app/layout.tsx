@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/theme-provider";
+import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"]
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Free llms.txt Generator",
   description: "Generate llms.txt files from webpages for AI agents free of cost",
   openGraph: {

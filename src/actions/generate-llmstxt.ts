@@ -53,6 +53,7 @@ export type GenerateResponse = {
   data: string | null;
   error: string | null;
   code: ErrorCode | null;
+  url: string | null;
 };
 
 export async function generateLlmTxtAction(
@@ -81,7 +82,8 @@ export async function generateLlmTxtAction(
       return {
         data: null,
         error: sanitizedUrl.error.errors[0].message,
-        code: "INVALID_URL"
+        code: "INVALID_URL",
+        url,
       };
     }
 
@@ -123,7 +125,8 @@ export async function generateLlmTxtAction(
     return {
       data: formatContent({ title, content: text, url }),
       error: null,
-      code: null
+      code: null,
+      url,
     };
   } catch (error) {
     console.log(error);
@@ -131,7 +134,8 @@ export async function generateLlmTxtAction(
     return {
       data: null,
       error: handledError.message,
-      code: handledError.code
+      code: handledError.code,
+      url,
     };
   }
 }

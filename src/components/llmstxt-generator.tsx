@@ -4,19 +4,20 @@ import { generateLlmTxtAction } from "@/actions/generate-llmstxt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, RotateCcw } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import Form from "next/form";
 import { useActionState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { RemainingRequests } from "./remaining-requests";
+import ResetButton from "./reset-button";
 import { ResultActions } from "./result-actions";
 import { SubmitButton } from "./submit-button";
-import { Button } from "./ui/button";
 
 const initialState = {
   data: null,
   error: null,
-  code: null
+  code: null,
+  url: null
 };
 
 export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
@@ -41,17 +42,12 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
           <Input
             type="url"
             name="url"
+            defaultValue={state?.url ?? ""}
             placeholder="https://example.com"
             required
             className="flex-grow"
           />
-          {!state?.data ? (
-            <SubmitButton />
-          ) : (
-            <Button type="reset">
-              <RotateCcw className="h-4 w-4" /> Reset
-            </Button>
-          )}
+          {!state?.data ? <SubmitButton /> : <ResetButton />}
         </Form>
 
         {state?.error && (

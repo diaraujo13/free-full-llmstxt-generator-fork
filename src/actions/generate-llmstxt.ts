@@ -60,14 +60,10 @@ export type GenerateResponse =
     };
 
 export async function generateLlmTxt({ url }: { url: string }): Promise<GenerateResponse> {
-  console.log("url", url);
-
   try {
     const headersList = await headers();
     const identifier = headersList.get("cf-connecting-ip") ?? headersList.get("x-real-ip") ?? headersList.get("x-forwarded-for") ?? "127.0.0.1";
-    console.log(identifier);
-    const { success, remaining, } = await ratelimit.limit(identifier);
-    console.log(remaining);
+    const { success, } = await ratelimit.limit(identifier);
     if (!success) {
       throw new LLMTXTError(
         "Your daily limit has been reached. Please try again tomorrow.",
@@ -88,7 +84,6 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
     const html = await webpageResponse.text();
     const $ = cheerio.load(html);
     const { title, content } = extractContent($);
-    console.log(content);
     if (!content) {
       throw new LLMTXTError(
         "No content found on webpage. The page might be empty or require JavaScript to load.",

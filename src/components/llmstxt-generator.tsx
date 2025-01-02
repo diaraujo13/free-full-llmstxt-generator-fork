@@ -104,7 +104,7 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
                 )}
               </Button>
             ) : (
-              <Button onClick={reset}><RotateCcw className="h-4 w-4" /> Reset</Button>
+              <Button onClick={reset} type="reset"><RotateCcw className="h-4 w-4" /> Reset</Button>
             )}
           </div>
         </form>

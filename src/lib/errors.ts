@@ -5,7 +5,8 @@ export type ErrorCode =
   | 'AI_ERROR'
   | 'VALIDATION_ERROR'
   | 'NETWORK_ERROR'
-  | 'RATE_LIMIT_EXCEEDED';
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'UNKNOWN_ERROR';
 
 export class LLMTXTError extends Error {
   constructor(
@@ -52,6 +53,6 @@ export function handleError(error: unknown): LLMTXTError {
   // Default error case
   return new LLMTXTError(
     'An unexpected error occurred. Please try again.',
-    'PARSE_ERROR'
+    'UNKNOWN_ERROR'
   );
 }

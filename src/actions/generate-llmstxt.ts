@@ -1,11 +1,13 @@
 "use server";
 
 import { ErrorCode, handleError, LLMTXTError } from "@/lib/errors";
-import { extractContent, siteUrl } from "@/lib/utils";
+import { ratelimit } from "@/lib/rate-limit";
+import { extractContent } from "@/lib/utils";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import * as cheerio from "cheerio";
-import { revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 const prompt = (
   content: string
@@ -46,19 +48,27 @@ const formatContent = ({
   return `---\ntitle: ${title}\nurl: ${url}\ntimestamp: ${new Date().toISOString()}\n---\n${content}`;
 };
 
-export type GenerateResponse = {
-  success: true;
-  data: string;
-} | {
-  success: false;
-  error: string;
-  code: ErrorCode;
-};
+export type GenerateResponse =
+  | {
+      success: true;
+      data: string;
+    }
+  | {
+      success: false;
+      error: string;
+      code: ErrorCode;
+    };
 
 export async function generateLlmTxt({ url }: { url: string }): Promise<GenerateResponse> {
+  console.log("url", url);
+
   try {
-    const shouldGenerate = await fetch(`${siteUrl}/api/rate-limiter`);
-    if (!shouldGenerate.ok) {
+    const headersList = await headers();
+    const identifier = headersList.get("cf-connecting-ip") ?? headersList.get("x-real-ip") ?? headersList.get("x-forwarded-for") ?? "127.0.0.1";
+    console.log(identifier);
+    const { success, remaining, } = await ratelimit.limit(identifier);
+    console.log(remaining);
+    if (!success) {
       throw new LLMTXTError(
         "Your daily limit has been reached. Please try again tomorrow.",
         "RATE_LIMIT_EXCEEDED"
@@ -78,7 +88,7 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
     const html = await webpageResponse.text();
     const $ = cheerio.load(html);
     const { title, content } = extractContent($);
-
+    console.log(content);
     if (!content) {
       throw new LLMTXTError(
         "No content found on webpage. The page might be empty or require JavaScript to load.",
@@ -88,7 +98,7 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
 
     const { text, finishReason } = await generateText({
       model: google("gemini-1.5-flash-8b"),
-      prompt: prompt(content),
+      prompt: prompt(content)
     });
 
     if (finishReason === "error" || !text) {
@@ -98,13 +108,14 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
       );
     }
 
-    revalidateTag("get-remaining");
+    revalidatePath("/");
 
     return {
       success: true,
       data: formatContent({ title, content: text, url })
     };
   } catch (error) {
+    console.log(error);
     const handledError = handleError(error);
     return {
       success: false,

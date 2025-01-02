@@ -12,27 +12,23 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useRateLimit } from "@/hooks/use-ratelimit";
 import { ErrorCode } from "@/lib/errors";
 import { validateAndSanitizeUrl } from "@/lib/security";
 import { AlertCircle, Check, Copy, Download, Loader2, WandSparkles } from "lucide-react";
 import { startTransition, useOptimistic, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
-import { useRouter } from "next/navigation";
 
 interface ErrorState {
   message: string;
   code: ErrorCode;
 }
 
-export default function LlmsTxtGenerator() {
-  const router = useRouter();
+export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
   const [url, setUrl] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState<ErrorState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useOptimistic(false);
-  const { data, isLoading: rateLimitLoading, } = useRateLimit();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +43,6 @@ export default function LlmsTxtGenerator() {
       const response = await generateLlmTxt({ url: sanitizedUrl });
       if (response.success) {
         setResult(response.data);
-        router.refresh();
       } else {
         setError({ message: response.error, code: response.code });
       }
@@ -68,18 +63,7 @@ export default function LlmsTxtGenerator() {
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>
-            Generate llms.txt{" "}
-            {data === null || rateLimitLoading ? (
-              <span className="text-sm font-normal text-muted-foreground">Checking limit ...</span>
-            ) : data.remaining === 0 ? (
-              <span className="text-sm font-normal text-muted-foreground">
-                (No requests remaining today)
-              </span>
-            ) : (
-              <span className="text-sm font-normal text-muted-foreground">
-                ({data.remaining} requests remaining today)
-              </span>
-            )}
+            Generate llms.txt <RemainingRequests remaining={remaining} />
           </CardTitle>
           <ModeToggle />
         </div>
@@ -160,5 +144,12 @@ export default function LlmsTxtGenerator() {
         </CardFooter>
       )}
     </Card>
+  );
+}
+function RemainingRequests({ remaining }: { remaining: number }) {
+  return (
+    <span className="text-sm font-normal text-muted-foreground">
+      {remaining > 0 ? `(${remaining} requests remaining)` : "(All requests used)"}
+    </span>
   );
 }

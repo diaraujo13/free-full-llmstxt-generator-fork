@@ -10,6 +10,7 @@ An tool that converts webpage content into Markdown format, optimized for LLM tr
 - Shadcn UI
 - Vercel AI SDK
 - Google Gemini 1.5 Flash
+- Upstash Redis
 
 ## Usage
 
@@ -21,7 +22,7 @@ An tool that converts webpage content into Markdown format, optimized for LLM tr
 
 1. Clone the repository
 2. Run `pnpm install`
-3. Copy `.env.example` to `.env.local` and add your Google Gemini API key
+3. Copy `.env.example` to `.env.local` and add required environment variables
 4. Run `pnpm dev`
 
 ## License

@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ErrorCode } from "@/lib/errors";
 import { validateAndSanitizeUrl } from "@/lib/security";
-import { AlertCircle, Check, Copy, Download, Loader2, WandSparkles } from "lucide-react";
+import { AlertCircle, Check, Copy, Download, Loader2, RotateCcw, WandSparkles } from "lucide-react";
 import { startTransition, useOptimistic, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 
@@ -58,6 +58,12 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
     }
   };
 
+  const reset = () => {
+    setUrl("");
+    setResult("");
+    setError(null);
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -83,19 +89,23 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
               required
               className="flex-grow"
             />
-            <Button type="submit" disabled={isLoading} data-umami-event="Generate">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating
-                </>
-              ) : (
-                <>
-                  <WandSparkles className="h-4 w-4" />
-                  Generate
-                </>
-              )}
-            </Button>
+            {!result ? (
+              <Button type="submit" disabled={isLoading} data-umami-event="Generate">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating
+                  </>
+                ) : (
+                  <>
+                    <WandSparkles className="h-4 w-4" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button onClick={reset}><RotateCcw className="h-4 w-4" /> Reset</Button>
+            )}
           </div>
         </form>
         {error && (

@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 export default async function Home() {
   const headersList = await headers();
   const identifier = headersList.get("cf-connecting-ip") ?? headersList.get("x-real-ip") ?? headersList.get("x-forwarded-for") ?? "127.0.0.1";
-
   const { remaining } = await ratelimit.getRemaining(identifier);
 
   return (

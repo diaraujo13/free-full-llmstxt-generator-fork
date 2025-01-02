@@ -1,68 +1,26 @@
 "use client";
 
-import { generateLlmTxt } from "@/actions/generate-llmstxt";
+import { generateLlmTxtAction } from "@/actions/generate-llmstxt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ErrorCode } from "@/lib/errors";
-import { validateAndSanitizeUrl } from "@/lib/security";
-import { AlertCircle, Check, Copy, Download, Loader2, RotateCcw, WandSparkles } from "lucide-react";
-import { startTransition, useOptimistic, useState } from "react";
+import { AlertCircle, RotateCcw } from "lucide-react";
+import Form from "next/form";
+import { useActionState } from "react";
 import { ModeToggle } from "./mode-toggle";
+import { RemainingRequests } from "./remaining-requests";
+import { ResultActions } from "./result-actions";
+import { SubmitButton } from "./submit-button";
+import { Button } from "./ui/button";
 
-interface ErrorState {
-  message: string;
-  code: ErrorCode;
-}
+const initialState = {
+  data: null,
+  error: null,
+  code: null
+};
 
 export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
-  const [url, setUrl] = useState("");
-  const [result, setResult] = useState("");
-  const [error, setError] = useState<ErrorState | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCopied, setIsCopied] = useOptimistic(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setResult("");
-
-    try {
-      // Validate and sanitize URL
-      const sanitizedUrl = validateAndSanitizeUrl(url);
-
-      const response = await generateLlmTxt({ url: sanitizedUrl });
-      if (response.success) {
-        setResult(response.data);
-      } else {
-        setError({ message: response.error, code: response.code });
-      }
-    } catch (err) {
-      // This catch block handles URL validation errors
-      const error = err instanceof Error ? err : new Error("An unexpected error occurred");
-      setError({
-        message: error.message,
-        code: "VALIDATION_ERROR"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const reset = () => {
-    setUrl("");
-    setResult("");
-    setError(null);
-  };
+  const [state, formAction] = useActionState(generateLlmTxtAction, initialState);
 
   return (
     <Card className="w-full">
@@ -79,87 +37,41 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value.trim())}
-              placeholder="https://example.com"
-              required
-              className="flex-grow"
-            />
-            {!result ? (
-              <Button type="submit" disabled={isLoading} data-umami-event="Generate">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating
-                  </>
-                ) : (
-                  <>
-                    <WandSparkles className="h-4 w-4" />
-                    Generate
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button onClick={reset} type="reset"><RotateCcw className="h-4 w-4" /> Reset</Button>
-            )}
-          </div>
-        </form>
-        {error && (
+        <Form action={formAction} className="flex gap-2.5">
+          <Input
+            type="url"
+            name="url"
+            placeholder="https://example.com"
+            required
+            className="flex-grow"
+          />
+          {!state?.data ? (
+            <SubmitButton />
+          ) : (
+            <Button type="reset">
+              <RotateCcw className="h-4 w-4" /> Reset
+            </Button>
+          )}
+        </Form>
+
+        {state?.error && (
           <Alert variant="destructive" className="mt-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error: {error.code}</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertTitle>Error: {state.code}</AlertTitle>
+            <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         )}
-        {result && (
+
+        {state?.data && (
           <div className="mt-4 font-mono">
-            <pre className="bg-muted p-4 rounded-md overflow-auto max-h-96 text-sm">{result}</pre>
+            <pre className="bg-muted p-4 rounded-md overflow-auto max-h-96 text-sm">
+              {state.data}
+            </pre>
           </div>
         )}
       </CardContent>
-      {result && (
-        <CardFooter className="flex gap-2">
-          <Button
-            onClick={() => {
-              startTransition(async () => {
-                await navigator.clipboard.writeText(result);
-                setIsCopied(true);
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-              });
-            }}
-            className="flex-1"
-            data-umami-event="Copy"
-          >
-            {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}{" "}
-            {isCopied ? "Copied" : "Copy"}
-          </Button>
-          <Button
-            onClick={() => {
-              const blob = new Blob([result], { type: "text/markdown" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "llms.txt";
-              a.click();
-            }}
-            className="flex-1"
-            data-umami-event="Download"
-          >
-            <Download className="mr-2 h-4 w-4" /> Download
-          </Button>
-        </CardFooter>
-      )}
+
+      {state?.data && <ResultActions result={state.data} />}
     </Card>
-  );
-}
-function RemainingRequests({ remaining }: { remaining: number }) {
-  return (
-    <span className="text-sm font-normal text-muted-foreground">
-      {remaining > 0 ? `(${remaining} requests remaining)` : "(All requests used)"}
-    </span>
   );
 }

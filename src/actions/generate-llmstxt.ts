@@ -2,6 +2,7 @@
 
 import { ErrorCode, handleError, LLMTXTError } from "@/lib/errors";
 import { ratelimit } from "@/lib/rate-limit";
+import { validateAndSanitizeUrl } from "@/lib/security";
 import { extractContent } from "@/lib/utils";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
@@ -48,28 +49,42 @@ const formatContent = ({
   return `---\ntitle: ${title}\nurl: ${url}\ntimestamp: ${new Date().toISOString()}\n---\n${content}`;
 };
 
-export type GenerateResponse =
-  | {
-      success: true;
-      data: string;
-    }
-  | {
-      success: false;
-      error: string;
-      code: ErrorCode;
-    };
+export type GenerateResponse = {
+  data: string | null;
+  error: string | null;
+  code: ErrorCode | null;
+};
 
-export async function generateLlmTxt({ url }: { url: string }): Promise<GenerateResponse> {
+export async function generateLlmTxtAction(
+  prevState: unknown,
+  formData: FormData
+): Promise<GenerateResponse> {
+  const url = formData.get("url")?.toString() || "";
   try {
     const headersList = await headers();
-    const identifier = headersList.get("cf-connecting-ip") ?? headersList.get("x-real-ip") ?? headersList.get("x-forwarded-for") ?? "127.0.0.1";
-    const { success, } = await ratelimit.limit(identifier);
+    const identifier =
+      headersList.get("cf-connecting-ip") ??
+      headersList.get("x-real-ip") ??
+      headersList.get("x-forwarded-for") ??
+      "127.0.0.1";
+    const { success } = await ratelimit.limit(identifier);
     if (!success) {
       throw new LLMTXTError(
         "Your daily limit has been reached. Please try again tomorrow.",
         "RATE_LIMIT_EXCEEDED"
       );
     }
+
+    // Sanitize URL
+    const sanitizedUrl = validateAndSanitizeUrl(url);
+    if (!sanitizedUrl.success) {
+      return {
+        data: null,
+        error: sanitizedUrl.error.errors[0].message,
+        code: "INVALID_URL"
+      };
+    }
+
     const webpageResponse = await fetch(url);
 
     if (!webpageResponse.ok) {
@@ -106,14 +121,15 @@ export async function generateLlmTxt({ url }: { url: string }): Promise<Generate
     revalidatePath("/");
 
     return {
-      success: true,
-      data: formatContent({ title, content: text, url })
+      data: formatContent({ title, content: text, url }),
+      error: null,
+      code: null
     };
   } catch (error) {
     console.log(error);
     const handledError = handleError(error);
     return {
-      success: false,
+      data: null,
       error: handledError.message,
       code: handledError.code
     };

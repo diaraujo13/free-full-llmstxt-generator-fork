@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { SafeParseReturnType, z } from 'zod';
 
 const urlSchema = z.string()
   .url()
@@ -27,7 +27,7 @@ const urlSchema = z.string()
     return url.toString();
   });
 
-export function validateAndSanitizeUrl(input: string): string {
-  return urlSchema.parse(input);
+export function validateAndSanitizeUrl(input: string): SafeParseReturnType<string, string> {
+  return urlSchema.safeParse(input);
 }
 

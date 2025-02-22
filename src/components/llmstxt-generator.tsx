@@ -60,7 +60,7 @@ export default function LlmsTxtGenerator({ remaining }: { remaining: number }) {
 
         {state?.data && (
           <div className="mt-4 font-mono">
-            <pre className="bg-muted p-4 rounded-md overflow-auto max-h-96 text-sm">
+            <pre className="bg-muted p-4 rounded-md overflow-y-auto max-h-96 text-sm">
               {state.data}
             </pre>
           </div>

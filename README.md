@@ -9,7 +9,7 @@ An tool that converts webpage content into Markdown format, optimized for LLM tr
 - Tailwind CSS
 - Shadcn UI
 - Vercel AI SDK
-- Google Gemini 1.5 Flash
+- Google Gemini 2.0 Flash
 - Upstash Redis
 
 ## Usage

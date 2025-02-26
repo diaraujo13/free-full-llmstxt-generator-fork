@@ -146,7 +146,7 @@ export async function generateLlmTxtAction(
     }
 
     const { text, finishReason } = await generateText({
-      model: google("gemini-2.0-flash-lite-preview-02-05"),
+      model: google("gemini-2.0-flash-lite"),
       prompt: prompt(content),
     });
 

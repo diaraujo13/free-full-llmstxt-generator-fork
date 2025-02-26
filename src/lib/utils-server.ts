@@ -19,22 +19,33 @@ export async function retry<T>(fn: () => Promise<T>, retries = 3, delay = 500): 
   }
 }
 
-export const extractContent = ($: cheerio.CheerioAPI) => {
+export async function extractContent($: cheerio.CheerioAPI) {
+  // Try Mozilla Readability first
   try {
     const doc = new JSDOM($.html());
     const reader = new Readability(doc.window.document);
     const article = reader.parse();
 
-    if (!article) {
-      throw new Error("Failed to parse the webpage content.");
+    if (article && article.textContent.length > 100) {
+      return { title: article.title, content: article.textContent };
     }
-
-    return { title: article.title, content: article.textContent };
-  } catch (error) {
-    console.error("Cheerio parsing error:", error);
-    throw new Error("Failed to parse the webpage content.");
+  } catch {
+    console.log("Readability extraction failed, using fallback method");
   }
-};
+
+  // Fallback to custom extraction if Readability fails
+  const title = $('title').text() || $('h1').first().text() || 'Untitled Document';
+
+  // Remove unwanted elements
+  $('script, style, nav, footer, iframe, [role="banner"], [role="navigation"]').remove();
+
+  const mainContent = $('main, article, #content, .content, .post, .article').first();
+  const content = mainContent.length
+    ? mainContent.text()
+    : $('body').text();
+
+  return { title, content };
+}
 
 export async function validateAndFetchContent(url: string): Promise<string> {
     const sanitizedUrl = validateAndSanitizeUrl(url);
@@ -55,15 +66,15 @@ export async function validateAndFetchContent(url: string): Promise<string> {
     return webpageResponse.text();
 }
 
-export function extractAndFormatContent(html: string): { title: string; content: string; } {
-    const $ = cheerio.load(html);
-    const { title, content } = extractContent($);
+// export function extractAndFormatContent(html: string): { title: string; content: string; } {
+//     const $ = cheerio.load(html);
+//     const { title, content } = extractContent($);
 
-    if (!content) {
-      throw new LLMTXTError(
-        "Could not extract the main content from this webpage. It might be dynamically generated or require JavaScript to load.",
-        "PARSE_ERROR"
-      );
-    }
-  return {title, content}
-}
+//     if (!content) {
+//       throw new LLMTXTError(
+//         "Could not extract the main content from this webpage. It might be dynamically generated or require JavaScript to load.",
+//         "PARSE_ERROR"
+//       );
+//     }
+//   return {title, content}
+// }

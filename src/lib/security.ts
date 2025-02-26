@@ -10,20 +10,33 @@ const urlSchema = z.string()
   .refine(
     (url) => {
       const hostname = url.hostname.toLowerCase();
-      return !(
+
+      // Check for local/private addresses
+      const isLocal =
         hostname === 'localhost' ||
         hostname.startsWith('127.') ||
         hostname.startsWith('192.168.') ||
         hostname.startsWith('10.') ||
-        hostname.match(/^(::1$|fc00:|fe80:)/)
-      );
+        hostname.match(/^(::1$|fc00:|fe80:)/);
+
+      // Check for potentially dangerous ports
+      const dangerousPorts = [21, 22, 23, 25, 135, 137, 138, 139, 445, 3389];
+      const hasRiskyPort = url.port && dangerousPorts.includes(parseInt(url.port, 10));
+
+      return !(isLocal || hasRiskyPort);
     },
-    { message: 'Local and private IPs are not allowed' }
+    { message: 'Local, private IPs, or dangerous ports are not allowed' }
   )
   .transform((url) => {
+    // Remove fragment
     url.hash = '';
-    ['api_key', 'token', 'key', 'password', 'secret']
-      .forEach(param => url.searchParams.delete(param));
+
+    // Remove potentially sensitive query parameters
+    [
+      'api_key', 'token', 'key', 'password', 'secret', 'auth',
+      'jwt', 'access_token', 'refresh_token', 'client_secret'
+    ].forEach(param => url.searchParams.delete(param));
+
     return url.toString();
   });
 

@@ -12,41 +12,36 @@ import { headers } from "next/headers";
 
 const prompt = (
   content: string
-) => `You are an expert webpage content formatter for creating high-quality Markdown suitable for training or providing context to large language models (LLMs). Your task is to convert input webpage content into clean, well-structured Markdown, paying meticulous attention to preserving semantic meaning and important formatting cues using Markdown syntax. Specifically:
+) => `You are an expert webpage content formatter for creating high-quality Markdown suitable for training or providing context to large language models (LLMs). Convert the webpage content into clean, well-structured Markdown, preserving semantic meaning and important formatting:
 
-* Maintain code blocks exactly as they appear in the source, using Markdown fenced code blocks (\`\`\`). Clearly identify the language if specified after the opening \`\`\`. Specifically:
-    * Use fenced code blocks for both <pre> and <code> tags.
-    * If a language is specified (e.g., in a class name like "language-javascript"), include it after the opening backticks.
+* **Code blocks**: Use fenced code blocks (\`\`\`) with language specified when available. Preserve indentation and syntax.
 
-* Structure the content logically using Markdown headings (#, ##, ###, etc), Markdown lists (*, -, or + for unordered; 1., 2. for ordered), and Markdown blockquotes (>). Specifically, use:
-    * # for <h1> headings (typically the main title of the page).
-    * ## for <h2> headings (major sections).
-    * ### for <h3> headings (subsections).
-    * #### for <h4> headings, and so on.
-    * If heading levels go deeper than <h6>, consider using a combination of headings and bold text to represent the hierarchy.
-*   For lists:
-    * Use *, -, or + for unordered lists (<ul>).
-    * Use 1., 2., etc. for ordered lists (<ol>).
-    * For nested lists, indent the nested list items by four spaces for each level of nesting.
+* **Headings**: Use # for <h1>, ## for <h2>, ### for <h3>, etc. Maintain heading hierarchy.
 
-* Preserve emphasis (important information or distinct elements) using Markdown bold (**text** or __text__) and italics (*text* or _text_) syntax.
+* **Lists**:
+  * Use *, -, or + for unordered lists
+  * Use 1., 2., etc. for ordered lists
+  * Indent nested lists by 4 spaces per nesting level
 
-* Convert HTML <blockquote> elements to Markdown blockquotes. Use the > character at the beginning of each line within the blockquote.
+* **Emphasis**: Use **bold** and *italics* to preserve emphasis from the original.
 
-* Convert HTML links into Markdown links ([link text](href_url)). eg: <a href="https://example.com">link text</a> -> [link text](https://example.com) or <a href="/about">link text</a> -> [link text](/about). No need to add placeholder for relative URLs
+* **Blockquotes**: Use > at the beginning of each line for blockquotes.
 
-* Convert HTML <table> elements to Markdown tables. Strive for readability and accuracy. Use a header row, a separator row with hyphens, and then the table rows.
+* **Links**: Convert to [link text](URL) format. Preserve relative URLs.
 
-* Ensure clear separation between paragraphs (using blank lines) and sections for optimal readability by AI agents.
+* **Tables**: Convert to Markdown tables with header rows and column alignment.
 
-* Favor semantic Markdown structure over replicating visual presentation. Use appropriate Markdown elements to convey meaning. Consider the context of each element (e.g., its parent, siblings, and overall document structure) when determining the best Markdown representation.
+* **Images**: Convert to ![alt text](image URL) format.
 
-* Output should be a single, cohesive Markdown document.
+* **Mathematical notation**: Preserve using $ for inline and $$ for block equations if present.
 
-* Do not add any other text or comments.
+* **Paragraphs**: Separate with blank lines for readability.
 
-Here is the webpage content: ${content}
-`;
+* **Clean content**: Remove navigation elements, ads, and other non-content elements.
+
+* **Output format**: Produce a single cohesive Markdown document without adding any commentary.
+
+Here is the webpage content: ${content}`;
 
 const formatContent = ({
   title,
@@ -125,7 +120,7 @@ export async function generateLlmTxtAction(
     let title: string | null = null;
     let content: string | null = null;
     try {
-      const extractedContent = extractContent($);
+      const extractedContent = await extractContent($);
       title = extractedContent.title;
       content = extractedContent.content;
     } catch (error) {

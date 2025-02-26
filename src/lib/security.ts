@@ -9,7 +9,7 @@ const urlSchema = z.string()
   )
   .refine(
     (url) => {
-      const hostname = url.hostname.toLowerCase();
+      const hostname = url.hostname?.toLowerCase();
 
       // Check for local/private addresses
       const isLocal =

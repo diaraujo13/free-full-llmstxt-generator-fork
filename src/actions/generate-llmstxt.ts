@@ -5,9 +5,9 @@ import { ratelimit } from "@/lib/rate-limit";
 import { validateAndSanitizeUrl } from "@/lib/security";
 import { extractContent, retry } from "@/lib/utils-server";
 import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { smoothStream, streamText } from "ai";
+import { createStreamableValue, StreamableValue } from "ai/rsc";
 import * as cheerio from "cheerio";
-import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 const prompt = (
@@ -43,20 +43,8 @@ const prompt = (
 
 Here is the webpage content: ${content}`;
 
-const formatContent = ({
-  title,
-  content,
-  url
-}: {
-  title: string;
-  content: string;
-  url: string;
-}) => {
-  return `---\ntitle: ${title}\nurl: ${url}\ntimestamp: ${new Date().toISOString()}\n---\n${content}`;
-};
-
 export type GenerateResponse = {
-  data: string | null;
+  data: StreamableValue<string> | string | null;
   error: string | null;
   code: ErrorCode | null;
   url: string | null;
@@ -140,23 +128,37 @@ export async function generateLlmTxtAction(
       );
     }
 
-    const { text, finishReason } = await generateText({
-      model: google("gemini-2.0-flash-lite"),
-      prompt: prompt(content),
-    });
+    // Create a streamable value for the generated content
+    const stream = createStreamableValue('');
 
-    if (finishReason === "error" || !text) {
-      throw new LLMTXTError(
-        "The AI model encountered an error while generating the content. Please try again later.",
-        "AI_ERROR"
-      );
-    }
+    // Start the streaming process
+    (async () => {
+      try {
+        const { textStream } = streamText({
+          model: google("gemini-2.0-flash-lite"),
+          prompt: prompt(content),
+          experimental_transform: smoothStream({
+            chunking: "line",
+          })
+        });
 
-    revalidatePath("/");
+        for await (const delta of textStream) {
+          stream.update(delta);
+        }
+
+        stream.done();
+      } catch (error) {
+        console.error("Streaming error:", error);
+        stream.error(new LLMTXTError(
+          "The AI model encountered an error while generating the content. Please try again later.",
+          "AI_ERROR"
+        ));
+      }
+    })();
 
     if (title && content) {
       return {
-        data: formatContent({ title, content: text, url }),
+        data: stream.value,
         error: null,
         code: null,
         url,

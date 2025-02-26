@@ -3,15 +3,17 @@
 import { Button } from "@/components/ui/button"
 import { CardFooter } from "@/components/ui/card"
 import { Check, Copy, Download } from "lucide-react"
-import { useState } from "react"
+import { startTransition, useOptimistic } from "react"
 
 export function ResultActions({ result }: { result: string }) {
-  const [isCopied, setIsCopied] = useState(false)
+  const [isCopied, setIsCopied] = useOptimistic(false)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(result)
-    setIsCopied(true)
-    setTimeout(() => setIsCopied(false), 1000)
+    startTransition(async() => {
+      setIsCopied(true)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    })
   }
 
   const handleDownload = () => {
@@ -24,12 +26,12 @@ export function ResultActions({ result }: { result: string }) {
   }
 
   return (
-    <CardFooter className="flex gap-2">
-      <Button onClick={handleCopy} className="flex-1">
+    <CardFooter className="flex gap-4">
+      <Button onClick={handleCopy} variant="outline" className="flex-1">
         {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
         {isCopied ? "Copied" : "Copy"}
       </Button>
-      <Button onClick={handleDownload} className="flex-1">
+      <Button onClick={handleDownload} variant="outline" className="flex-1">
         <Download className="mr-2 h-4 w-4" /> Download
       </Button>
     </CardFooter>

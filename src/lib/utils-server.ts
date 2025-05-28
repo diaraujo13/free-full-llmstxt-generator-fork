@@ -27,10 +27,13 @@ export async function extractContent($: cheerio.CheerioAPI) {
     const article = reader.parse();
 
     if (article && article.textContent.length > 100) {
+      console.log(`[LLMS] Readability success: title='${article.title}', contentLength=${article.textContent.length}`);
       return { title: article.title, content: article.textContent };
+    } else {
+      console.log(`[LLMS] Readability returned insufficient content (length=${article?.textContent.length ?? 0}).`);
     }
-  } catch {
-    console.log("Readability extraction failed, using fallback method");
+  } catch (e) {
+    console.log("[LLMS] Readability extraction failed, using fallback method", e);
   }
 
   // Fallback to custom extraction if Readability fails
@@ -44,6 +47,7 @@ export async function extractContent($: cheerio.CheerioAPI) {
     ? mainContent.text()
     : $('body').text();
 
+  console.log(`[LLMS] Fallback extraction: title='${title}', contentLength=${content.length}`);
   return { title, content };
 }
 
@@ -65,6 +69,8 @@ export async function validateAndFetchContent(url: string): Promise<string> {
 
     return webpageResponse.text();
 }
+
+
 
 // export function extractAndFormatContent(html: string): { title: string; content: string; } {
 //     const $ = cheerio.load(html);

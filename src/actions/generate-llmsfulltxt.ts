@@ -6,6 +6,8 @@ import { validateAndSanitizeUrl } from "@/lib/security";
 import { extractContent, retry } from "@/lib/utils-server";
 import * as cheerio from "cheerio";
 import { headers } from "next/headers";
+import { promises as fs } from "fs";
+import path from "path";
 
 export type FullGenerateResponse = {
   urls: { url: string; title: string }[];
@@ -85,10 +87,9 @@ export async function extractUrlsAction(
 export async function generateLlmsFullTxtAction(
   prevState: unknown,
   formData: FormData
-): Promise<FullGenerateResponse> {
+): Promise<FullGenerateResponse & { downloadUrl?: string }> {
   const urls = formData.getAll("urls") as string[];
   try {
-    let allContent = "";
     let h1 = "";
     let summary = "";
     let fileLists: string[] = [];
@@ -96,6 +97,16 @@ export async function generateLlmsFullTxtAction(
     let current = 0;
     const startTime = Date.now();
     console.log(`[LLMS] Starting full content generation for ${total} URLs.`);
+
+    // Ensure export directory exists
+    const exportDir = path.join(process.cwd(), "public", "export");
+    await fs.mkdir(exportDir, { recursive: true });
+    // Use a unique filename per job
+    const uniqueId = Date.now();
+    const fileName = `llms-full-${uniqueId}.txt`;
+    const filePath = path.join(exportDir, fileName);
+    const downloadUrl = `/export/${fileName}`;
+
     for (const url of urls) {
       current++;
       const linkStart = Date.now();
@@ -111,8 +122,10 @@ export async function generateLlmsFullTxtAction(
         const { title, content } = await extractContent($);
         if (!h1) h1 = `# ${title}\n`;
         if (!summary) summary = `> ${content.split(". ")[0]}\n`;
-        allContent += `\n${content}\n`;
         fileLists.push(`- [${title}](${url})`);
+        // Append content to file incrementally
+        const toAppend = `\n\n# ${title}\n\n${content}\n`;
+        await fs.appendFile(filePath, toAppend, "utf8");
         const linkElapsed = ((Date.now() - linkStart) / 1000).toFixed(2);
         console.log(`[LLMS] [${current}/${total}] Success: ${url} (Elapsed: ${linkElapsed}s)`);
       } catch (err) {
@@ -124,8 +137,10 @@ export async function generateLlmsFullTxtAction(
     }
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`[LLMS] Finished full content generation. Processed ${current}/${total} links in ${totalElapsed}s.`);
-    const markdown = `${h1}\n${summary}\n${allContent}\n\n## File List\n${fileLists.join("\n")}`;
-    return { urls: [], content: markdown };
+    // Append file list and summary at the end
+    const fileListSection = `\n\n## File List\n${fileLists.join("\n")}`;
+    await fs.appendFile(filePath, fileListSection, "utf8");
+    return { urls: [], content: undefined, downloadUrl };
   } catch (error) {
     const handledError = handleError(error);
     return {

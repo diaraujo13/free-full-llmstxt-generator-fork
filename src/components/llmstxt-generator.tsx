@@ -41,6 +41,12 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
   const [fullContent, setFullContent] = useState<string | null>(null);
   const [fullError, setFullError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [applyPrefixFilter, setApplyPrefixFilter] = useState(false);
+  const [filterPrefix, setFilterPrefix] = useState<string | null>(null);
+  const [generationStats, setGenerationStats] = useState<{ size: number; seconds: number; words: number } | null>(null);
 
   // Handle form reset
   const handleReset = async () => {
@@ -99,6 +105,9 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
     setFoundUrls([]);
     setSelectedUrls([]);
     setFullContent(null);
+    setApplyPrefixFilter(false);
+    setFilterPrefix(null);
+    setGenerationStats(null);
     const form = formRef.current;
     if (!form) return;
     const formData = new FormData(form);
@@ -110,8 +119,22 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
     }
     setFoundUrls(res.urls);
     setSelectedUrls(res.urls.map((u: { url: string }) => u.url));
+    // Set filter prefix from the pasted URL
+    const pastedUrl = formData.get("url")?.toString() || "";
+    try {
+      const urlObj = new URL(pastedUrl);
+      setFilterPrefix(urlObj.origin + urlObj.pathname.replace(/\/$/, ""));
+    } catch {}
     setIsFullLoading(false);
   };
+
+  // Filtering logic
+  useEffect(() => {
+    if (applyPrefixFilter && filterPrefix && foundUrls.length > 0) {
+      const regex = new RegExp(`^${filterPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+      setSelectedUrls(foundUrls.filter(u => regex.test(u.url)).map(u => u.url));
+    }
+  }, [applyPrefixFilter, filterPrefix, foundUrls]);
 
   const handleUrlToggle = (url: string) => {
     setSelectedUrls(prev => prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]);
@@ -121,15 +144,43 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
     setIsFullLoading(true);
     setFullError(null);
     setFullContent(null);
+    setDownloadUrl(null);
+    setProgress(0);
+    setProgressTotal(selectedUrls.length);
+    setGenerationStats(null);
+    const start = Date.now();
+    // Simulate progress (since backend is not streaming progress)
+    let estimated = 0;
+    const interval = setInterval(() => {
+      estimated += 1;
+      setProgress((prev) => {
+        if (prev < selectedUrls.length) return prev + 1;
+        return prev;
+      });
+    }, 1200);
     const formData = new FormData();
     selectedUrls.forEach(url => formData.append("urls", url));
     const res = await generateLlmsFullTxtAction(null, formData);
+    clearInterval(interval);
+    setProgress(selectedUrls.length);
     if (res.error) {
       setFullError(res.error);
       setIsFullLoading(false);
       return;
     }
     setFullContent(res.content || "");
+    if (res.downloadUrl) setDownloadUrl(res.downloadUrl);
+    // Fetch file size and word count
+    if (res.downloadUrl) {
+      try {
+        const fileRes = await fetch(res.downloadUrl);
+        const text = await fileRes.text();
+        const size = new Blob([text]).size;
+        const words = text.split(/\s+/).filter(Boolean).length;
+        const seconds = ((Date.now() - start) / 1000).toFixed(1);
+        setGenerationStats({ size, seconds: Number(seconds), words });
+      } catch {}
+    }
     setIsFullLoading(false);
   };
 
@@ -214,20 +265,48 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
               {!isFullLoading && foundUrls.length > 0 && (
                 <div className="max-h-64 overflow-y-auto space-y-2 mt-2">
                   {foundUrls.map(({ url, title }) => (
-                    <label key={url} className="flex items-center gap-2 cursor-pointer">
+                    <label key={url} className="flex items-start gap-2 cursor-pointer">
                       <Checkbox checked={selectedUrls.includes(url)} onCheckedChange={() => handleUrlToggle(url)} />
-                      <span className="truncate" title={title}>{title}</span>
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline ml-2">link</a>
+                      <div className="flex flex-col">
+                        <span className="truncate font-medium" title={title}>{title}</span>
+                        <span className="text-xs text-muted-foreground break-all">{url}</span>
+                      </div>
                     </label>
                   ))}
+                </div>
+              )}
+              {/* Filter checkbox below action row */}
+              {!isFullLoading && foundUrls.length > 0 && (
+                <div className="flex items-center gap-2 mt-4">
+                  <Checkbox
+                    checked={applyPrefixFilter}
+                    onCheckedChange={() => setApplyPrefixFilter(v => !v)}
+                    id="prefix-filter"
+                  />
+                  <label htmlFor="prefix-filter" className="text-sm cursor-pointer select-none">
+                    Only include links that start with <span className="font-mono text-xs bg-muted px-1 rounded">{filterPrefix}</span>
+                  </label>
                 </div>
               )}
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="secondary" onClick={() => setShowFullModal(false)} disabled={isFullLoading}>Cancel</Button>
                 <Button variant="default" onClick={handleFullConfirm} disabled={isFullLoading || selectedUrls.length === 0}>Confirm</Button>
               </div>
-              {isFullLoading && <div className="mt-2">Generating full content...</div>}
-              {fullContent && (
+              {isFullLoading && (
+                <div className="mt-4 w-full flex flex-col items-center">
+                  <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                    <div
+                      className="bg-primary h-4 rounded-full transition-all duration-500"
+                      style={{ width: `${progressTotal ? (progress / progressTotal) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Processing {progress} of {progressTotal} links... ({progressTotal ? Math.round((progress / progressTotal) * 100) : 0}%)
+                  </div>
+                  <div className="mt-2 text-xs text-gray-400">This is an estimate. The file will be available for download when finished.</div>
+                </div>
+              )}
+              {!isFullLoading && fullContent && (
                 <div className="mt-4 font-mono">
                   <pre
                     className="bg-muted p-4 rounded-md overflow-auto max-w-fit  max-h-60 text-sm whitespace-pre-wrap"
@@ -245,6 +324,27 @@ function GeneratorContent({ onReset }: { onReset: () => void }) {
                     </Button>
                   </div>
                 </div>
+              )}
+              {!isFullLoading && downloadUrl && (
+                <>
+                  {generationStats && (
+                    <div className="mb-4 p-3 rounded bg-green-100 text-green-800 border border-green-300 text-sm">
+                      <strong>Success!</strong> Your file is ready.<br />
+                      <span>Estimated size: <b>{(generationStats.size / 1024).toFixed(2)} KB</b> &middot; Generated in <b>{generationStats.seconds}s</b> &middot; <b>{generationStats.words}</b> words</span>
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <a
+                      href={downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors font-semibold text-center"
+                      download
+                    >
+                      Download Full LLMS.txt File
+                    </a>
+                  </div>
+                </>
               )}
             </DialogDescription>
           </DialogContent>
